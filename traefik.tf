@@ -1,5 +1,9 @@
-# Traefik Deployment
+# This file configures the Traefik Ingress Controller in the Kubernetes cluster.
+# It creates a dedicated namespace and installs Traefik using its official Helm chart.
+# Key configurations include setting Traefik as the default ingress class,
+# redirecting HTTP to HTTPS, and enabling TLS on the secure entry point.
 
+# Creates the "traefik" namespace for all Traefik-related resources.
 resource "kubernetes_namespace" "traefik" {
 
     depends_on = [
@@ -11,6 +15,8 @@ resource "kubernetes_namespace" "traefik" {
     }
 }
 
+# Installs the Traefik Helm chart into the "traefik" namespace.
+# Traefik will act as the reverse proxy and load balancer for the cluster.
 resource "helm_release" "traefik" {
     depends_on = [
         kubernetes_namespace.traefik
@@ -22,7 +28,9 @@ resource "helm_release" "traefik" {
     repository = "https://helm.traefik.io/traefik"
     chart = "traefik"
 
-    # Set Traefik as the Default Ingress Controller
+    # Sets Traefik as the default Ingress Controller for the cluster.
+    # This means any Ingress resource without a specific ingressClassName
+    # will be managed by Traefik.
     set {
         name  = "ingressClass.enabled"
         value = "true"
@@ -32,13 +40,15 @@ resource "helm_release" "traefik" {
         value = "true"
     }
 
-    # Default Redirect
+    # Configures the HTTP entry point ("web") to automatically redirect
+    # all traffic to the HTTPS entry point ("websecure").
     set {
         name  = "ports.web.redirectTo"
         value = "websecure"
     }
 
-    # Enable TLS on Websecure
+    # Enables TLS on the "websecure" (HTTPS) entry point, allowing Traefik
+    # to handle TLS termination for incoming traffic.
     set {
         name  = "ports.websecure.tls.enabled"
         value = "true"

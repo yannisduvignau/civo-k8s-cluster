@@ -1,3 +1,10 @@
+# This file configures cert-manager in the Kubernetes cluster.
+# It sets up the necessary namespace, installs cert-manager using a Helm chart,
+# and creates a ClusterIssuer for issuing certificates via Let's Encrypt
+# using Cloudflare for DNS-01 challenges.
+
+# Creates the "certmanager" namespace in Kubernetes.
+# This provides an isolated environment for all cert-manager related resources.
 resource "kubernetes_namespace" "certmanager" {
 
   depends_on = [
@@ -9,6 +16,9 @@ resource "kubernetes_namespace" "certmanager" {
   }
 }
 
+# Installs the cert-manager Helm chart into the "certmanager" namespace.
+# cert-manager is a native Kubernetes certificate management controller that helps
+# with issuing and renewing TLS certificates.
 resource "helm_release" "certmanager" {
 
   depends_on = [
@@ -21,13 +31,16 @@ resource "helm_release" "certmanager" {
   repository = "https://charts.jetstack.io"
   chart      = "cert-manager"
 
-  # Install Kubernetes CRDs
+  # This setting ensures that the Custom Resource Definitions (CRDs) required
+  # by cert-manager are installed as part of the Helm release.
   set {
     name  = "installCRDs"
     value = "true"
   }
 }
 
+# Pauses execution for 10 seconds to allow the cert-manager pods and services
+# to initialize properly before creating dependent resources.
 resource "time_sleep" "wait_for_certmanager" {
 
   depends_on = [
@@ -37,8 +50,10 @@ resource "time_sleep" "wait_for_certmanager" {
   create_duration = "10s"
 }
 
-# Create a ClusterIssuer
-
+# Creates a ClusterIssuer resource named "cloudflare-prod".
+# A ClusterIssuer is a Kubernetes resource that represents a certificate authority (CA)
+# from which to obtain certificates. This one is configured for Let's Encrypt's
+# production environment using a Cloudflare DNS-01 solver.
 resource "kubectl_manifest" "cloudflare_prod" {
 
   depends_on = [
@@ -66,6 +81,8 @@ spec:
     YAML
 }
 
+# Pauses execution for 30 seconds to allow the ClusterIssuer to be
+# registered and become ready before other resources attempt to use it.
 resource "time_sleep" "wait_for_clusterissuer" {
 
   depends_on = [
